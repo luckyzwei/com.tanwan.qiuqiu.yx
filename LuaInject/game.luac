@@ -1,0 +1,203 @@
+local runic = require("runic")
+runic.send("启动游戏")
+
+require("declare")
+
+local LanguageModule = require("tool.language")
+game = {}
+game.extra_cfg = {}
+local cfg_url = "http://protal.q2.175game.com/clientinfo/"
+
+local xhr = cc.XMLHttpRequest:new()  -- 创建XMLHttpRequest对象
+xhr.timeout = 30  -- 设置超时时间
+xhr.responseType = cc.XMLHTTPREQUEST_RESPONSE_STRING  -- 设置返回内容的类型
+
+xhr:setRequestHeader("Connection", "Keep-Alive")
+xhr:open("GET", cfg_url)  -- 设置向服务器发送请求的类型（通常为"GET"或"POST"）和请求的目标URL
+local function httpCallback()
+    gLogger.info("xhr.readyState", xhr.readyState)
+    gLogger.info("xhr.status", xhr.status)
+    gLogger.info("xhr.statusText", xhr.statusText)
+    gLogger.info("xhr.responseText", xhr.responseText)
+    local list = json.decode(xhr.responseText)
+    dump(list)
+    gLogger.info("xhr.response", xhr.response)
+    if xhr.status ~= 200 then
+        return
+    end
+    game.extra_cfg = json.decode(xhr.responseText) or {}
+end
+
+xhr:registerScriptHandler(httpCallback)  -- 注册监听，服务器返回时触发回调函数
+xhr:send()
+
+game.curRunningScene = nil
+game.isExit = false
+
+local function doReEnterGame(bool, isLogout)
+    -- from background to foreground, there doesn't need to confirm
+    if isLogout then
+        gHasLoaded = false
+    end
+    
+    gEventMgr.trigEvent(gEventConst.EV_REENTER_GAME)
+    if bool == true then
+		require("module.network.connect").disconnect()
+		return game.enterLoginScene(true)
+    end
+end
+
+function game.reEnterGame(bool, isLogout)
+    if CLIENT_VERSION == 1 then
+        doReEnterGame( bool, isLogout )
+        return
+    end
+
+    --@TODO 2020-04-28 13:09:35 
+    -- if BGSprite.setStep then
+    --     BGSprite.setStep("S001")
+    -- end
+    checkIsMaintenanceAndVersion( function()
+        doReEnterGame(bool, isLogout)
+    end )
+end
+
+local EnterBackgroundTimestamp  = 0
+local EnterBackgroundTimedelta  = 0
+gEnterForegroundTS = 0
+function game.getEnterBackgroundTimedelta()
+    return EnterBackgroundTimedelta
+end
+
+function game.enterForeground()
+    gLogger.debug("game.enterForeground")
+    gEnterForegroundTS = os.time()
+
+    if EnterBackgroundTimestamp == 0 then
+        gLogger.error( "Enter foreground error!!!!!!!!!!!!" )
+        return
+    end
+
+    EnterBackgroundTimedelta = os.time() - EnterBackgroundTimestamp
+    EnterBackgroundTimestamp = 0
+
+    gEventMgr.trigEvent(gEventConst.EV_ENTER_FOREGROUND, EnterBackgroundTimedelta)
+
+    -- because It will trigger APP_ENTER_FOREGROUND event when playing cg
+    -- and login with others sdk
+    --[[
+    if device.platform == "android" and not game.getIsMainActivity() then
+        return game.setIsMainActivity( true )
+    end
+
+    if EnterBackgroundTimedelta >= 60 * 1000 then
+        return game.reEnterGame( true )
+    end
+    --]]
+end
+
+function game.enterBackground()
+    EnterBackgroundTimestamp = os.time()
+    -- gNotificationMgr.pushAllNotifications()
+    gEventMgr.trigEvent(gEventConst.EV_ENTER_BACKGROUND)
+end
+
+function game.becomeActive()
+    
+end
+
+local function doStartup()
+    game.enterLoginScene()
+end
+
+function game.startup()
+    if CLIENT_VERSION == 1 then
+        doStartup()
+        return
+    end
+    -- if BGSprite.setStep then
+    --     BGSprite.setStep("S001")
+    -- end
+    checkIsMaintenanceAndVersion(doStartup)
+end
+
+function game.exit()
+    cc.Director:getInstance():endToLua()
+    game.isExit = true
+end
+
+function game.enterLoginScene(isReEnter)
+    local userDefault = cc.UserDefault:sharedUserDefault()
+    local musicVol = userDefault:getIntegerForKey("system_musicVol", 100)
+    local effectVol = userDefault:getIntegerForKey("system_effectVol", 100)
+    gAudioTool.setEffectVolume(effectVol / 100)
+    gAudioTool.setMusicVolume(musicVol / 100)
+
+    if isReEnter then
+        local LoginScene = require("scene.login_scene")
+        local scene = LoginScene.new()
+		local ts = cc.TransitionFade:create(1, scene)
+        cc.Director:getInstance():replaceScene(ts)
+        return 
+    end
+
+    local LoginScene = require("scene.login_scene")
+    local scene = LoginScene.new()
+    cc.Director:getInstance():replaceScene(scene)
+end
+
+function game:startBattle()
+	assert(self._curBattle == nil)
+	
+	local Battle = require("battle.battle")
+	self._curBattle = Battle.new()
+	
+	return self._curBattle
+end
+
+function game:getBattle()
+	return self._curBattle
+end
+
+function game:destroyBattle()
+	if self._curBattle then
+		self._curBattle:destroy()
+		self._curBattle = nil
+	end
+end
+
+game.m_currentScene = nil
+function game.getCurrentScene()
+    return game.m_currentScene
+end
+
+function game.getCurrentSceneType()
+    return game.m_currentScene.m_scene
+end
+
+function game.setCurrentScene( scene )
+    game.m_currentScene = scene
+end
+
+function game.getUILayer()
+    return game.m_currentScene:getUILayer()
+end
+
+function game.__init__()
+    -- quick-cocos2dx has helped us set randomseed, see framework.__init__
+    -- initRandom()
+
+    if gFrameRate then
+        cc.Director:getInstance():setAnimationInterval(1 / gFrameRate)
+    end
+
+    cc.Director:getInstance():setProjection(0)
+
+    local FileUtils = cc.FileUtils:getInstance()
+    local p         = FileUtils:getWritablePath() .. "q2.game.qtz.com/"
+
+    FileUtils:addSearchPath(p, true)
+    FileUtils:addSearchPath(p .. "src/", true)
+end
+
+game.__init__()
