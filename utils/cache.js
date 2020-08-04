@@ -31,7 +31,6 @@ var CACHE = {
     },
     'ads_can': {},
     'adsWatchCnt': 0,  // 每日广告播放次数
-    'battleServerInfo': {},
     'dragonBallInfo': {}, // 龙珠信息
     // 广告类型
     'AdvertData': {
