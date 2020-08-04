@@ -133,6 +133,7 @@ CACHE.getBallKeysSort = function() {
     var i, j, temp,
         ballList = CACHE.battle.self.ballList,
         keyList = Object.keys(ballList);
+	// 从第到高排序
     for(i=0; i < keyList.length - 1 ; i++) {
         for(j=0; j < keyList.length - 1 - i ; j++) {
             var key1 = keyList[j],
@@ -144,7 +145,8 @@ CACHE.getBallKeysSort = function() {
             }
         }
     }
-    return keyList;
+	// 反转结果 高到低
+    return keyList.reverse();
 };
 
 // 读取缓存还原数据
