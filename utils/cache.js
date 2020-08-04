@@ -5,6 +5,7 @@ var gameData = require('./gameData');
 var filePath = path.join(__dirname, './cache.json');
 
 var CACHE = {
+    'DEBUG': false, // 开关调试日志记录
     'version': {}, // 版本相关信息
     'mailList': [], // 邮箱数据
     'gonggaoBoard': {}, // 公告数据
@@ -21,6 +22,7 @@ var CACHE = {
         battleType: 0, // 对战类型：1.正常排位 2.合作模式 3.竞技场
         runTimeLeft: -1, // 登录游戏时间
         runTimeInterval: 500, // 游戏帧处理间隔
+        killBallMergeTime: -1, // 抢救球球 时间
         // 我方玩家 信息
         self: {
             cfg: {},
