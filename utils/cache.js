@@ -6,6 +6,7 @@ var filePath = path.join(__dirname, './cache.json');
 
 var CACHE = {
     'DEBUG': false, // 开关调试日志记录
+    'refreshShopAdvert': true, // 自动点击商店广告刷新免费商品，领取奖励
     'version': {}, // 版本相关信息
     'mailList': [], // 邮箱数据
     'gonggaoBoard': {}, // 公告数据
@@ -86,16 +87,7 @@ CACHE.clearPlay = function() {
 };
 
 /**
- * 取球球名称
- * @param ballType
- * @returns {string}
- */
-CACHE.getBallName = function(ballType) {
-    return gameData.ballNameList[ ballType - 1 ]; // 球球 name 等于 ballType-1 / JS 数组下标
-};
-
-/**
- * 根据 ID 取 球球对象
+ * 根据 ID 取 缓存数据中的球球对象
  * @param {number} ballId
  * @returns { {ballId: number, ballType: number, pos: number, star: number} }
  */
@@ -111,43 +103,61 @@ CACHE.getBallById = function(ballId) {
 };
 
 // 合并球球判断 - 根据传入球球 ID 查询相同类型同等级的球球
-CACHE.getBallMergeId = function(ballId) {
+CACHE.getBallMergeId = function(ballId, isKillBall) {
     var mergeFromObj = CACHE.getBallById(ballId);
+    // 不合并 - 成长球球 / 暗杀模式，还是会尝试抢救！
+    if(!isKillBall && mergeFromObj.ballType === 32){
+        return;
+    }
+    // 不合并 - 七星球球
+    if(mergeFromObj.star >= 7) {
+        return;
+    }
+    var mergeFromObjIsAllPowerfulBall = gameData.BattleConst.allPowerful.includes(mergeFromObj.ballType); // 合并球球是否万能球球
     var mergeToObj = null;
     var ballList = CACHE.battle.self.ballList;
-    var keysList = Object.keys(ballList);
-    for (var i=0; i < keysList.length ;i++) {
-        var key = keysList[i];
-        var ballItem = ballList[key];
+    // 暗杀抢救模式 且 复制球球，需要变更为 合并同类，挪坑才能防止掉星。
+    if(isKillBall && mergeFromObj.ballType === 44) {
+        mergeFromObjIsAllPowerfulBall = false;
+    }
+    var canMergeList = Object.values(ballList).filter((ballItem) => {
+        var result = false,
+            mergeToObjIsAllPowerfulBall = false;
         if(ballId !== ballItem.ballId) {
-            if(ballItem.ballType === mergeFromObj.ballType && ballItem.star === mergeFromObj.star) {
-                mergeToObj = ballItem;
-                break;
+            // （万能球 或 相同球） 且 星星相同
+            if(ballItem.star === mergeFromObj.star) {
+                // 被合并球球是 万能合并球球
+                mergeToObjIsAllPowerfulBall = gameData.BattleConst.allPowerful.includes(ballItem.ballType);
+                // 暗杀模式 且 被合并球球是复制球球，忽略
+                if(isKillBall && ballItem.ballType === 44) {
+                    mergeToObjIsAllPowerfulBall = false;
+                }
+                // 主球球 是万能球
+                if(mergeFromObjIsAllPowerfulBall || mergeToObjIsAllPowerfulBall) {
+                    result = true;
+                }
+                // 球球类型相同
+                if(ballItem.ballType === mergeFromObj.ballType) {
+                    result = true;
+                }
             }
         }
+        return result;
+    });
+    if(canMergeList.length > 0) {
+        // TODO 此处还可以优化成，根据 球球类型排序：攻、召、控、辅
+        mergeToObj = canMergeList[0];
     }
     return mergeToObj;
 };
 
 // 排序球球列表 - 根据 球球星星
 CACHE.getBallKeysSort = function() {
-    var i, j, temp,
-        ballList = CACHE.battle.self.ballList,
-        keyList = Object.keys(ballList);
-	// 从第到高排序
-    for(i=0; i < keyList.length - 1 ; i++) {
-        for(j=0; j < keyList.length - 1 - i ; j++) {
-            var key1 = keyList[j],
-                key2 = keyList[j + 1];
-            if(ballList[key1].star > ballList[key2].star) {
-                temp = key1;
-                keyList[j] = key2;
-                keyList[j + 1] = temp;
-            }
-        }
-    }
-	// 反转结果 高到低
-    return keyList.reverse();
+    var ballList = Object.values(CACHE.battle.self.ballList);
+    ballList.sort((a, b) => {
+        return a.star - b.star; // 排序：高到低 - 降序
+    });
+    return ballList.map( (ballItem) => ballItem.ballId); // 取球球实例 ID 数组
 };
 
 // 读取缓存还原数据
