@@ -155,7 +155,7 @@ CACHE.getBallMergeId = function(ballId, isKillBall) {
 CACHE.getBallKeysSort = function() {
     var ballList = Object.values(CACHE.battle.self.ballList);
     ballList.sort((a, b) => {
-        return a.star - b.star; // 排序：高到低 - 降序
+        return b.star - a.star; // 排序：高到低 - 降序
     });
     return ballList.map( (ballItem) => ballItem.ballId); // 取球球实例 ID 数组
 };
