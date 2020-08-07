@@ -157,9 +157,16 @@ CACHE.getBallMergeId = function(ballId, isKillBall) {
                 if(isKillBall && ballItem.ballType === 44) {
                     mergeToObjIsAllPowerfulBall = false;
                 }
-                // 非暗杀，复制球球，不相互复制
-                if(!isKillBall && mergeFromObj.ballType === 44 && ballItem.ballType === 44) {
-                    return false;
+                // 非暗杀
+                if(!isKillBall) {
+                    // 生长球球，不相互合并
+                    if(mergeFromObj.ballType === 32 && ballItem.ballType === 32) {
+                        return false;
+                    }
+                    // 复制球球，不相互复制合并
+                    if(mergeFromObj.ballType === 44 && ballItem.ballType === 44) {
+                        return false;
+                    }
                 }
                 // 主球球 是万能球
                 if(mergeFromObjIsAllPowerfulBall || mergeToObjIsAllPowerfulBall) {
