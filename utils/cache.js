@@ -6,7 +6,7 @@ var filePath = path.join(__dirname, './cache.json');
 
 var CACHE = {
     'DEBUG': false, // 开关调试日志记录
-    'refreshShopAdvert': true, // 自动点击商店广告刷新免费商品，领取奖励
+    'refreshShopAdvert': false, // 自动点击商店广告刷新免费商品，领取奖励
     'version': {}, // 版本相关信息
     'mailList': [], // 邮箱数据
     'gonggaoBoard': {}, // 公告数据
@@ -113,17 +113,29 @@ CACHE.getBallById = function(ballId) {
 // 合并球球判断 - 根据传入球球 ID 查询相同类型同等级的球球
 CACHE.getBallMergeId = function(ballId, isKillBall) {
     var mergeFromObj = CACHE.getBallById(ballId);
-    // 不合并 - 成长球球 / 暗杀模式，还是会尝试抢救！
-    if(!isKillBall && mergeFromObj.ballType === 32){
-        return;
-    }
+    var mergeFromObjIsAllPowerfulBall = gameData.BattleConst.allPowerful.includes(mergeFromObj.ballType); // 合并球球是否万能球球
+    var mergeToObj = null;
+    var ballList = CACHE.battle.self.ballList;
+
     // 不合并 - 七星球球
     if(mergeFromObj.star >= 7) {
         return;
     }
-    var mergeFromObjIsAllPowerfulBall = gameData.BattleConst.allPowerful.includes(mergeFromObj.ballType); // 合并球球是否万能球球
-    var mergeToObj = null;
-    var ballList = CACHE.battle.self.ballList;
+    // 成长球球 非暗杀模式，还是会尝试抢救！32.成长 44.复制
+    if(!isKillBall && [32, 44].includes(mergeFromObj.ballType)){
+        var hasCopyBall = Object.values(ballList).filter( (ballItem) => {
+            // 找出复制球球、生长球球 进行复制
+            if(ballId !== ballItem.ballId
+                && ballItem.ballType !== mergeFromObj.ballType
+                && ballItem.star === mergeFromObj.star
+                && [32, 44].includes(ballItem.ballType)) {
+                return true;
+            }
+        });
+        if(hasCopyBall.length > 0) {
+            return hasCopyBall[0];
+        }
+    }
     // 暗杀抢救模式 且 复制球球，需要变更为 合并同类，挪坑才能防止掉星。
     if(isKillBall && mergeFromObj.ballType === 44) {
         mergeFromObjIsAllPowerfulBall = false;
