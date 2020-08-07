@@ -20,6 +20,14 @@ var CACHE = {
     'loginInfo': {}, // 登录信息
     // 对局信息
     'battle': {
+        /*BattleConst.BossType = {
+            Knight = 101,	-- 骑士（转王）
+            Magician = 102,	-- 魔术师
+            Imprison = 103,	-- 禁锢
+            Summoner = 104,	-- 召唤师
+            Assassinator = 105,	-- 暗杀大师
+        }*/
+        bossTrailer: 0, // boss 预告
         battleType: 0, // 对战类型：1.正常排位 2.合作模式 3.竞技场
         runTimeLeft: -1, // 登录游戏时间
         runTimeInterval: 500, // 游戏帧处理间隔
@@ -145,7 +153,13 @@ CACHE.getBallMergeId = function(ballId, isKillBall) {
         return result;
     });
     if(canMergeList.length > 0) {
-        // TODO 此处还可以优化成，根据 球球类型排序：攻、召、控、辅
+        canMergeList.sort( (a, b) => {
+            var aBallObj = gameData.getBallObj(a.ballType);
+            var bBallObj = gameData.getBallObj(b.ballType);
+            a.weight = gameData.BattleConst.featureWeight[ aBallObj.featureType ];
+            b.weight = gameData.BattleConst.featureWeight[ bBallObj.featureType ];
+            return a.weight - b.weight;
+        });
         mergeToObj = canMergeList[0];
     }
     return mergeToObj;
@@ -155,7 +169,12 @@ CACHE.getBallMergeId = function(ballId, isKillBall) {
 CACHE.getBallKeysSort = function() {
     var ballList = Object.values(CACHE.battle.self.ballList);
     ballList.sort((a, b) => {
-        return b.star - a.star; // 排序：高到低 - 降序
+        // 暗杀大师 优先升级低星球球
+        if(CACHE.battle.bossTrailer == 105) {
+            return a.star - b.star; // 排序：低到高 - 升序
+        } else {
+            return b.star - a.star; // 排序：高到低 - 降序
+        }
     });
     return ballList.map( (ballItem) => ballItem.ballId); // 取球球实例 ID 数组
 };
