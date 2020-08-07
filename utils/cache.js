@@ -7,6 +7,11 @@ var filePath = path.join(__dirname, './cache.json');
 var CACHE = {
     'DEBUG': false, // 开关调试日志记录
     'refreshShopAdvert': true, // 自动点击商店广告刷新免费商品，领取奖励
+    'autoPlay': {
+        'pvpAdvertType': true,   // 竞技
+        'cooperateAdvertType': true,  // 合作
+    },
+
     'version': {}, // 版本相关信息
     'mailList': [], // 邮箱数据
     'gonggaoBoard': {}, // 公告数据
