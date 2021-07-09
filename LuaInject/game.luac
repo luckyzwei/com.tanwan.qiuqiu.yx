@@ -8,12 +8,12 @@ game = {}
 game.extra_cfg = {}
 local cfg_url = "http://protal.q2.175game.com/clientinfo/"
 
-local xhr = cc.XMLHttpRequest:new()  -- 创建XMLHttpRequest对象
-xhr.timeout = 30  -- 设置超时时间
-xhr.responseType = cc.XMLHTTPREQUEST_RESPONSE_STRING  -- 设置返回内容的类型
+local xhr = cc.XMLHttpRequest:new() -- 创建XMLHttpRequest对象
+xhr.timeout = 30 -- 设置超时时间
+xhr.responseType = cc.XMLHTTPREQUEST_RESPONSE_STRING -- 设置返回内容的类型
 
 xhr:setRequestHeader("Connection", "Keep-Alive")
-xhr:open("GET", cfg_url)  -- 设置向服务器发送请求的类型（通常为"GET"或"POST"）和请求的目标URL
+xhr:open("GET", cfg_url) -- 设置向服务器发送请求的类型（通常为"GET"或"POST"）和请求的目标URL
 local function httpCallback()
     gLogger.info("xhr.readyState", xhr.readyState)
     gLogger.info("xhr.status", xhr.status)
@@ -28,85 +28,96 @@ local function httpCallback()
     game.extra_cfg = json.decode(xhr.responseText) or {}
 end
 
-xhr:registerScriptHandler(httpCallback)  -- 注册监听，服务器返回时触发回调函数
+xhr:registerScriptHandler(httpCallback) -- 注册监听，服务器返回时触发回调函数
 xhr:send()
 
 game.curRunningScene = nil
 game.isExit = false
+
+function game.getCurSceneIsMainScene()
+    local curScene = game.curRunningScene
+    if curScene and "MainScene" == curScene.__cname then
+        return true
+    end
+    return false
+end
+
+function game.onFocusMainSceneShopType(shopType, shopId)
+    if nil == shopType or not game.getCurSceneIsMainScene() then
+        return
+    end
+    local ThemeActivityData = require("module.pto_data.theme_activity_data")
+    gEventMgr.trigEvent(gEventConst.EVENT_CLOSE_PANEL, {name = "pnl_theme_activity"})
+    game.curRunningScene:getUILayer():onFocusShopType(shopType, shopId)
+end
+
+function game.onFocusMainScene(index, noAction)
+    if nil == index or not game.getCurSceneIsMainScene() then
+        return
+    end
+    game.curRunningScene:getUILayer():onFocusIndex(index, noAction)
+end
 
 local function doReEnterGame(bool, isLogout)
     -- from background to foreground, there doesn't need to confirm
     if isLogout then
         gHasLoaded = false
     end
-    
+
     gEventMgr.trigEvent(gEventConst.EV_REENTER_GAME)
     if bool == true then
-		require("module.network.connect").disconnect()
-		return game.enterLoginScene(true)
+        require("module.network.connect").disconnect()
+        require("module.network.connect_battle").disconnect()
+        return game.enterLoginScene(true)
     end
 end
 
 function game.reEnterGame(bool, isLogout)
     if CLIENT_VERSION == 1 then
-        doReEnterGame( bool, isLogout )
-        return
-    end
-
-    --@TODO 2020-04-28 13:09:35 
-    -- if BGSprite.setStep then
-    --     BGSprite.setStep("S001")
-    -- end
-    checkIsMaintenanceAndVersion( function()
         doReEnterGame(bool, isLogout)
-    end )
-end
-
-local EnterBackgroundTimestamp  = 0
-local EnterBackgroundTimedelta  = 0
-gEnterForegroundTS = 0
-function game.getEnterBackgroundTimedelta()
-    return EnterBackgroundTimedelta
-end
-
-function game.enterForeground()
-    gLogger.debug("game.enterForeground")
-    gEnterForegroundTS = os.time()
-
-    if EnterBackgroundTimestamp == 0 then
-        gLogger.error( "Enter foreground error!!!!!!!!!!!!" )
         return
     end
 
-    EnterBackgroundTimedelta = os.time() - EnterBackgroundTimestamp
-    EnterBackgroundTimestamp = 0
+    checkIsMaintenanceAndVersion(
+        function()
+            doReEnterGame(bool, isLogout)
+        end
+    )
+end
 
-    gEventMgr.trigEvent(gEventConst.EV_ENTER_FOREGROUND, EnterBackgroundTimedelta)
-
-    -- because It will trigger APP_ENTER_FOREGROUND event when playing cg
-    -- and login with others sdk
-    --[[
-    if device.platform == "android" and not game.getIsMainActivity() then
-        return game.setIsMainActivity( true )
-    end
-
-    if EnterBackgroundTimedelta >= 60 * 1000 then
-        return game.reEnterGame( true )
-    end
-    --]]
+gLastInBackgroundTime = 0
+gEnterForegroundTS = 0
+gEnterBackgroundTS = 0
+function game.enterForeground()
+    gLastInBackgroundTime = os.time() - gEnterBackgroundTS
+    gEnterForegroundTS = os.time()
+    gLogger.debug(gEventConst.APP_ENTER_FOREGROUND_EVENT, gLastInBackgroundTime)
+    gEventMgr.trigEvent(gEventConst.APP_ENTER_FOREGROUND_EVENT, gLastInBackgroundTime)
 end
 
 function game.enterBackground()
-    EnterBackgroundTimestamp = os.time()
-    -- gNotificationMgr.pushAllNotifications()
-    gEventMgr.trigEvent(gEventConst.EV_ENTER_BACKGROUND)
+    gEnterBackgroundTS = os.time()
+    gLogger.debug(gEventConst.APP_ENTER_BACKGROUND_EVENT, gEnterBackgroundTS)
+    gEventMgr.trigEvent(gEventConst.APP_ENTER_BACKGROUND_EVENT)
 end
 
-function game.becomeActive()
-    
-end
+local eventDispatcher = cc.Director:getInstance():getEventDispatcher()
+eventDispatcher:addCustomEventListener(
+    gEventConst.APP_ENTER_BACKGROUND_EVENT,
+    function()
+        game.enterBackground()
+    end
+)
+
+eventDispatcher:addCustomEventListener(
+    gEventConst.APP_ENTER_FOREGROUND_EVENT,
+    function()
+        game.enterForeground()
+    end
+)
 
 local function doStartup()
+    cc.Director:getInstance():setDisplayStats(CC_SHOW_FPS)
     game.enterLoginScene()
 end
 
@@ -115,9 +126,7 @@ function game.startup()
         doStartup()
         return
     end
-    -- if BGSprite.setStep then
-    --     BGSprite.setStep("S001")
-    -- end
+
     checkIsMaintenanceAndVersion(doStartup)
 end
 
@@ -130,15 +139,15 @@ function game.enterLoginScene(isReEnter)
     local userDefault = cc.UserDefault:sharedUserDefault()
     local musicVol = userDefault:getIntegerForKey("system_musicVol", 100)
     local effectVol = userDefault:getIntegerForKey("system_effectVol", 100)
-    gAudioTool.setEffectVolume(effectVol / 100)
-    gAudioTool.setMusicVolume(musicVol / 100)
+    gAudioTool.setEffectVolume(effectVol)
+    gAudioTool.setMusicVolume(musicVol)
 
     if isReEnter then
         local LoginScene = require("scene.login_scene")
         local scene = LoginScene.new()
-		local ts = cc.TransitionFade:create(1, scene)
+        local ts = cc.TransitionFade:create(1, scene)
         cc.Director:getInstance():replaceScene(ts)
-        return 
+        return
     end
 
     local LoginScene = require("scene.login_scene")
@@ -146,24 +155,34 @@ function game.enterLoginScene(isReEnter)
     cc.Director:getInstance():replaceScene(scene)
 end
 
+-- 退出战斗场景
+function game.exitBattleScene()
+    local BattleReturnScene = require("scene.battle_return_scene")
+    local battleReturnScene = BattleReturnScene.new()
+    if battleReturnScene then
+        local ts = cc.TransitionFade:create(0.5, battleReturnScene)
+        cc.Director:getInstance():replaceScene(ts)
+    end
+end
+
 function game:startBattle()
-	assert(self._curBattle == nil)
-	
-	local Battle = require("battle.battle")
-	self._curBattle = Battle.new()
-	
-	return self._curBattle
+    assert(self._curBattle == nil)
+
+    local Battle = require("battle.battle")
+    self._curBattle = Battle.new()
+
+    return self._curBattle
 end
 
 function game:getBattle()
-	return self._curBattle
+    return self._curBattle
 end
 
 function game:destroyBattle()
-	if self._curBattle then
-		self._curBattle:destroy()
-		self._curBattle = nil
-	end
+    if self._curBattle then
+        self._curBattle:destroy()
+        self._curBattle = nil
+    end
 end
 
 game.m_currentScene = nil
@@ -175,7 +194,7 @@ function game.getCurrentSceneType()
     return game.m_currentScene.m_scene
 end
 
-function game.setCurrentScene( scene )
+function game.setCurrentScene(scene)
     game.m_currentScene = scene
 end
 
@@ -194,7 +213,7 @@ function game.__init__()
     cc.Director:getInstance():setProjection(0)
 
     local FileUtils = cc.FileUtils:getInstance()
-    local p         = FileUtils:getWritablePath() .. "q2.game.qtz.com/"
+    local p = FileUtils:getWritablePath() .. "q2.game.qtz.com/"
 
     FileUtils:addSearchPath(p, true)
     FileUtils:addSearchPath(p .. "src/", true)

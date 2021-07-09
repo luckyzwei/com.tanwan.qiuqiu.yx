@@ -9,7 +9,7 @@ var CACHE = {
     'refreshShopAdvert': true, // 自动点击商店广告刷新免费商品，领取奖励
     'autoPlay': {
         'pvpAdvertType': true,   // 竞技
-        'cooperateAdvertType': true,  // 合作
+        'cooperateAdvertType': false,  // 合作
     },
 
     'version': {}, // 版本相关信息
@@ -35,7 +35,7 @@ var CACHE = {
         bossTrailer: 0, // boss 预告
         battleType: 0, // 对战类型：1.正常排位 2.合作模式 3.竞技场
         runTimeLeft: -1, // 登录游戏时间
-        runTimeInterval: 500, // 游戏帧处理间隔
+        runTimeInterval: 1000, // 游戏帧处理间隔
         killBallMergeTime: -1, // 抢救球球 时间
         // 我方玩家 信息
         self: {
@@ -61,7 +61,7 @@ var CACHE = {
         'legionContributeAdvertType': 6,  // 球队捐献广告
         'shopAdvertLimit': false, // 商店广告限制
         'hasVideoAdsBuff': false, // 竞技BUFF
-        'cooperateAdvertLimit': false // 合作广告限制
+        'cooperateAdvertLimit': true // 合作广告限制
     },
 
     '_advertList': {},
@@ -123,12 +123,14 @@ CACHE.getBallById = function(ballId) {
 CACHE.getBallMergeId = function(ballId, isKillBall) {
     var mergeFromObj = CACHE.getBallById(ballId);
     var mergeFromObjIsAllPowerfulBall = gameData.BattleConst.allPowerful.includes(mergeFromObj.ballType); // 合并球球是否万能球球
+    var mergeFromObjIsNotMerge = gameData.BattleConst.notMerge.includes(mergeFromObj.ballType); // 不升级球
+
     var mergeToObj = null;
     var ballList = CACHE.battle.self.ballList;
 
     // 不合并 - 七星球球
-    if(mergeFromObj.star >= 7) {
-        return;
+    if(mergeFromObj.star >= 7 ||mergeFromObjIsNotMerge||mergeFromObj.ballType === 40 ) {
+        return false;
     }
     // 成长球球 非暗杀模式，还是会尝试抢救！32.成长 44.复制
     if(!isKillBall && [32, 44].includes(mergeFromObj.ballType)){
@@ -152,6 +154,7 @@ CACHE.getBallMergeId = function(ballId, isKillBall) {
     var canMergeList = Object.values(ballList).filter((ballItem) => {
         var result = false,
             mergeToObjIsAllPowerfulBall = false;
+
         if(ballId !== ballItem.ballId) {
             // （万能球 或 相同球） 且 星星相同
             if(ballItem.star === mergeFromObj.star) {
@@ -160,6 +163,12 @@ CACHE.getBallMergeId = function(ballId, isKillBall) {
                 // 暗杀模式 且 被合并球球是复制球球，忽略
                 if(isKillBall && ballItem.ballType === 44) {
                     mergeToObjIsAllPowerfulBall = false;
+                }
+                if(mergeFromObj.ballType==44 && ballItem.ballType === 40){
+                    return false
+                }
+                if(mergeFromObj.ballType==39 && ballItem.ballType === 40){
+                    return false
                 }
                 // 非暗杀
                 if(!isKillBall) {
@@ -171,6 +180,7 @@ CACHE.getBallMergeId = function(ballId, isKillBall) {
                     if(mergeFromObj.ballType === 44 && ballItem.ballType === 44) {
                         return false;
                     }
+                    
                 }
                 // 主球球 是万能球
                 if(mergeFromObjIsAllPowerfulBall || mergeToObjIsAllPowerfulBall) {
@@ -186,6 +196,12 @@ CACHE.getBallMergeId = function(ballId, isKillBall) {
     });
     if(canMergeList.length > 0) {
         canMergeList.sort( (a, b) => {
+            if (gameData.BattleConst.notMerge.includes(a.ballType)){
+                return -1000;
+            }
+            if (gameData.BattleConst.notMerge.includes(b.ballType)){
+                return 1000;
+            }
             var aBallObj = gameData.getBallObj(a.ballType);
             var bBallObj = gameData.getBallObj(b.ballType);
             a.weight = gameData.BattleConst.featureWeight[ aBallObj.featureType ];
