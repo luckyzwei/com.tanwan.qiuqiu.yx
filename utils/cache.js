@@ -251,7 +251,7 @@ CACHE.getUnMergeBallId = function(ballId) {
         result = false;
         if(ballId !== ballItem.ballId) {
             // （万能球 或 相同球） 且 星星相同
-			if(ballList.length<6 && ballItem.star>=3 && ballItem.ballType==40){
+			if(ballList.length<4 && ballItem.star>=3 && ballItem.ballType==40){
 				return false;
 			}
             if(ballItem.star === mergeFromObj.star) {
@@ -279,6 +279,7 @@ CACHE.getUnMergeBallId = function(ballId) {
         });
         mergeToObj = canMergeList[0];
     }
+	echo("to type:",mergeToObj.ballType,"from_type:",mergeFromObj.ballType)
     return mergeToObj;
 };
 
