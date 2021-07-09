@@ -76,7 +76,7 @@ var CACHE = {
     '_noticeList': [], // 通用广告
     '_cheapPackIsOpen': false, // 1元礼包。6元礼包
     '_cheapPackData': [], // 1元礼包。6元礼包
-    'NotMergeCount':6,
+    'NotMergeCount':8,
 };
 
 // 读入文件到缓存
