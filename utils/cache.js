@@ -38,7 +38,7 @@ var CACHE = {
         runTimeInterval: 1000, // 游戏帧处理间隔
         runTimeIntervalUnMerge:500,
         runTimeLeftUnMerge:-1,
-        runUnMergeCount:0,
+        runUnMergeCount:5,
         MonsterType:0,
         killBallMergeTime: -1, // 抢救球球 时间
         // 我方玩家 信息
@@ -76,7 +76,7 @@ var CACHE = {
     '_noticeList': [], // 通用广告
     '_cheapPackIsOpen': false, // 1元礼包。6元礼包
     '_cheapPackData': [], // 1元礼包。6元礼包
-    'NotMergeCount':8,
+    'NotMergeCount':12,
 };
 
 // 读入文件到缓存
@@ -134,6 +134,23 @@ CACHE.getBallMergeId = function(ballId, isKillBall) {
 
     // 不合并 - 七星球球
     if(mergeFromObj.star >= 7 ||mergeFromObjIsNotMerge||mergeFromObj.ballType === 40 ) {
+
+        if(mergeFromObj.star>=7 && mergeFromObj.ballType ===44 ){
+            var canMergeList = Object.values(ballList).filter((ballItem) =>{
+                if(ballId !== ballItem.ballId){
+                    if(ballItem.star === mergeFromObj.star && gameData.BattleConst.notMerge.includes(ballItem.ballType) ) {
+                        return true;
+                    }
+
+                }
+                return false;
+            });
+            mergeToObj = canMergeList[0];
+            return mergeToObj;
+            
+        }
+
+
         return false;
     }
     // 成长球球 非暗杀模式，还是会尝试抢救！32.成长 44.复制
@@ -255,7 +272,7 @@ CACHE.getUnMergeBallId = function(ballId) {
         var result = false;
         if(ballId !== ballItem.ballId ) {
             // （万能球 或 相同球） 且 星星相同
-			if(ballList.length<4 && ballItem.star>=3 && ballItem.ballType==40){
+			if(TmpballList.length<6 && ballItem.star>=3 && ballItem.ballType==40){
 				return false;
             }
 
