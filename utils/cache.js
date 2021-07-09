@@ -36,6 +36,10 @@ var CACHE = {
         battleType: 0, // 对战类型：1.正常排位 2.合作模式 3.竞技场
         runTimeLeft: -1, // 登录游戏时间
         runTimeInterval: 1000, // 游戏帧处理间隔
+        runTimeIntervalUnMerge:500,
+        runTimeLeftUnMerge:-1,
+        runUnMergeCount:0,
+        MonsterType:0,
         killBallMergeTime: -1, // 抢救球球 时间
         // 我方玩家 信息
         self: {
@@ -152,8 +156,7 @@ CACHE.getBallMergeId = function(ballId, isKillBall) {
         mergeFromObjIsAllPowerfulBall = false;
     }
     var canMergeList = Object.values(ballList).filter((ballItem) => {
-        var result = false,
-            mergeToObjIsAllPowerfulBall = false;
+        var result = false, mergeToObjIsAllPowerfulBall = false;
 
         if(ballId !== ballItem.ballId) {
             // （万能球 或 相同球） 且 星星相同
@@ -228,46 +231,55 @@ CACHE.getUnMergeBallId = function(ballId) {
     }
     // 成长球球 非暗杀模式，还是会尝试抢救！32.成长 44.复制
     // 只处理UnMergeBallList 和召唤球 40召唤 notMerge 大于6个才合并
-    var ballList = Object.values(ballList).filter((ballItem) =>{
+    var TmpballList = Object.values(ballList).filter((ballItem) =>{
         return gameData.BattleConst.notMerge.includes(ballItem.ballType);
        
     }   );
-    var mergeNotMerge = false
-    if (ballList.length>CACHE.NotMergeCount){
+     var mergeNotMerge = false
+    if (TmpballList.length>CACHE.NotMergeCount){
         mergeNotMerge = true
 
     }
     //不是召唤球也不在不可合成列表里
-    if(!isNotMerge && !issummoner){
+    if(isNotMerge && !mergeNotMerge){
         return;
     }
     //不属于不可合成列表，并且不是召唤球
-    if ( (!mergeNotMerge && isNotMerge)){
+    if ( (!issummoner && !isNotMerge)){
         return ;
     }
 
 
+
     var canMergeList = Object.values(ballList).filter((ballItem) => {
-        result = false;
-        if(ballId !== ballItem.ballId) {
+        var result = false;
+        if(ballId !== ballItem.ballId ) {
             // （万能球 或 相同球） 且 星星相同
 			if(ballList.length<4 && ballItem.star>=3 && ballItem.ballType==40){
 				return false;
-			}
-            if(ballItem.star === mergeFromObj.star) {
-                mergeToObjIsAllPowerfulBall = gameData.BattleConst.allPowerful.includes(ballItem.ballType);
-               
-                }
-                if(mergeToObjIsAllPowerfulBall){
-                    result = true;
-                }
-                if(ballItem.ballType === mergeFromObj.ballType) {
-                    result = true;
-                }
+            }
 
+            if(ballItem.star === mergeFromObj.star) {
+                 // 生长球球，不相互合并
+                 if(mergeFromObj.ballType === 32 && ballItem.ballType === 32) {
+                    return false;
+                }
+                // 复制球球，不相互复制合并
+                if(mergeFromObj.ballType === 44 && ballItem.ballType === 44) {
+                    return false;
+                }
+                    var mergeToObjIsAllPowerfulBall = gameData.BattleConst.allPowerful.includes(ballItem.ballType);
+                    if(mergeToObjIsAllPowerfulBall){
+                        result = true;
+                    }
+                    if(ballItem.ballType === mergeFromObj.ballType) {
+                        result = true;
+                    }
+                }
+            
             }
         return result;
-    })
+    });
 
     
     if(canMergeList.length > 0) {
@@ -279,7 +291,7 @@ CACHE.getUnMergeBallId = function(ballId) {
         });
         mergeToObj = canMergeList[0];
     }
-	echo("to type:",mergeToObj.ballType,"from_type:",mergeFromObj.ballType)
+
     return mergeToObj;
 };
 

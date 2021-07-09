@@ -7,7 +7,11 @@ runic.send("启动游戏")
 ]]
 local Runic = {}
 local callback
+<<<<<<< Updated upstream
 local url = "http://192.168.0.4:5157/api.php" -- 根据使用环境，修改此处 IP
+=======
+local url = "http://192.168.0.4:5147/api.php" -- 根据使用环境，修改此处 IP
+>>>>>>> Stashed changes
 
 _G["DEBUG"] = 4
 _G["LOG_LEVEL"] = 1
