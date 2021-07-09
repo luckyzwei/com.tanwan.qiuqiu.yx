@@ -43,7 +43,10 @@ var CACHE = {
             ballMaxNum: 15,
             ballList: {},
             ballsGrade: {}
-        }
+        },
+        roundMonsterCount:0,
+        currentRound:0,
+        
     },
     'ads_can': {},
     'adsWatchCnt': 0,  // 每日广告播放次数
@@ -69,6 +72,7 @@ var CACHE = {
     '_noticeList': [], // 通用广告
     '_cheapPackIsOpen': false, // 1元礼包。6元礼包
     '_cheapPackData': [], // 1元礼包。6元礼包
+    'NotMergeCount':6,
 };
 
 // 读入文件到缓存
@@ -192,6 +196,73 @@ CACHE.getBallMergeId = function(ballId, isKillBall) {
     }
     return mergeToObj;
 };
+
+
+CACHE.getUnMergeBallId = function(ballId) {
+    var mergeFromObj = CACHE.getBallById(ballId);
+    var mergeFromObjIsAllPowerfulBall = gameData.BattleConst.allPowerful.includes(mergeFromObj.ballType); // 合并球球是否万能球球
+    var mergeToObj = null;
+    var ballList = CACHE.battle.self.ballList;
+    var isNotMerge = gameData.BattleConst.notMerge.includes(mergeFromObj.ballType); 
+    var issummoner = mergeFromObj.ballType ===40;
+
+    // 不合并 - 七星球球
+    if(mergeFromObj.star >= 7) {
+        return;
+    }
+    // 成长球球 非暗杀模式，还是会尝试抢救！32.成长 44.复制
+    // 只处理UnMergeBallList 和召唤球 40召唤 notMerge 大于6个才合并
+    var ballList = Object.values(ballList).filter((ballItem) =>{
+        return gameData.BattleConst.notMerge.includes(ballItem.ballType);
+       
+    }   );
+    var mergeNotMerge = false
+    if (ballList.length>CACHE.NotMergeCount){
+        mergeNotMerge = true
+
+    }
+    //不是召唤球也不在不可合成列表里
+    if(!isNotMerge && !issummoner){
+        return;
+    }
+    //不属于不可合成列表，并且不是召唤球
+    if ( (!mergeNotMerge && isNotMerge)){
+        return ;
+    }
+
+
+    var canMergeList = Object.values(ballList).filter((ballItem) => {
+        result = false;
+        if(ballId !== ballItem.ballId) {
+            // （万能球 或 相同球） 且 星星相同
+            if(ballItem.star === mergeFromObj.star) {
+                mergeToObjIsAllPowerfulBall = gameData.BattleConst.allPowerful.includes(ballItem.ballType);
+               
+                }
+                if(mergeToObjIsAllPowerfulBall){
+                    result = true;
+                }
+                if(ballItem.ballType === mergeFromObj.ballType) {
+                    result = true;
+                }
+
+            }
+        return result;
+    })
+
+    
+    if(canMergeList.length > 0) {
+        canMergeList.sort( (a, b) => {
+            var aweight = a.ballType ===40? 10+a.star:a.star
+            var bweight = b.ballType ===40? 10+b.star:b.star
+           
+            return aweight - bweight;
+        });
+        mergeToObj = canMergeList[0];
+    }
+    return mergeToObj;
+};
+
 
 // 排序球球列表 - 根据 球球星星
 CACHE.getBallKeysSort = function() {
