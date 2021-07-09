@@ -251,6 +251,9 @@ CACHE.getUnMergeBallId = function(ballId) {
         result = false;
         if(ballId !== ballItem.ballId) {
             // （万能球 或 相同球） 且 星星相同
+			if(ballList.length<6 && ballItem.star>=3 && ballItem.ballType==40){
+				return false;
+			}
             if(ballItem.star === mergeFromObj.star) {
                 mergeToObjIsAllPowerfulBall = gameData.BattleConst.allPowerful.includes(ballItem.ballType);
                
