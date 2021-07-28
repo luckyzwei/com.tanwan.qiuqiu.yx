@@ -326,6 +326,66 @@ CACHE.getUnMergeBallId = function(ballId) {
     return mergeToObj;
 };
 
+CACHE.getKillBallMergeId =function(ballId) {
+    var mergeFromObj = CACHE.getBallById(ballId);
+    var mergeFromObjIsKillBall = gameData.BattleConst.killBall.includes(mergeFromObj.ballType); // 合并球球是否万能球球
+    var mergeToObj = null;
+    var ballList = CACHE.battle.self.ballList;
+
+
+    // 不合并 - 七星球球
+    if(mergeFromObj.star >= 7) {
+        return;
+    }
+    // 成长球球 非暗杀模式，还是会尝试抢救！32.成长 44.复制
+    if(!mergeFromObjIsKillBall){
+        return;
+    }
+
+
+
+    var canMergeList = Object.values(ballList).filter((ballItem) => {
+        var result = false;
+        if(ballId !== ballItem.ballId ) {
+            // （万能球 或 相同球） 且 星星相同
+		
+
+            if(ballItem.star === mergeFromObj.star) {
+                 // 生长球球，不相互合并
+                 if(mergeFromObj.ballType === 32 && ballItem.ballType === 32) {
+                    return false;
+                }
+                // 复制球球，不相互复制合并
+                if(mergeFromObj.ballType === 44 && ballItem.ballType === 44) {
+                    return false;
+                }
+                    var mergeToObjIsAllPowerfulBall = gameData.BattleConst.allPowerful.includes(ballItem.ballType);
+                    if(mergeToObjIsAllPowerfulBall){
+                        result = true;
+                    }
+                    if(ballItem.ballType === mergeFromObj.ballType) {
+                        result = true;
+                    }
+                }
+            
+            }
+        return result;
+    });
+
+    
+    if(canMergeList.length > 0) {
+        canMergeList.sort( (a, b) => {
+            var aweight = a.star
+            var bweight = b.star
+           
+            return aweight - bweight;
+        });
+        mergeToObj = canMergeList[0];
+    }
+
+    return mergeToObj;
+};
+
 
 
 
@@ -436,6 +496,8 @@ CACHE.getBallKeysSort = function() {
     });
     return ballList.map( (ballItem) => ballItem.ballId); // 取球球实例 ID 数组
 };
+
+
 
 // 读取缓存还原数据
 CACHE.readCache();

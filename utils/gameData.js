@@ -44,6 +44,10 @@ var gameData = {
             48, //奔流球球
             32, // 成长球球
         ],
+        killBall: [
+            35,
+            16
+        ],
         // 参考文件 - battle_const.luac
         DragonBallUpgradeCost: {
             '1': 100,
